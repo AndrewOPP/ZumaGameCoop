@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"github.com/AndrewOPP/ZumaGameCoop/config"
-	"github.com/AndrewOPP/ZumaGameCoop/game"
-	"github.com/AndrewOPP/ZumaGameCoop/hub"
+	// "github.com/AndrewOPP/ZumaGameCoop/game"
+	"github.com/AndrewOPP/ZumaGameCoop/mainHub"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -19,7 +19,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-func wsHandler(h *hub.Hub) http.HandlerFunc {
+func wsHandler(h *mainhub.MainHub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Апгрейд HTTP соединения в WebSocket
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -31,43 +31,44 @@ func wsHandler(h *hub.Hub) http.HandlerFunc {
 		log.Println("New WebSocket connection!")
 		// conn.WriteMessage(websocket.TextMessage, []byte("Welcome! Connection established."))
 		// Передаем conn и экземпляр Хаба в обработчик
-		go handleMessages(conn, h)
+		// go handleMessages(conn, h)
+		go h.RoutePlayer(conn, r)
 	}
 }
 
-func handleMessages(conn *websocket.Conn, h *hub.Hub) {
-	h.Register <- conn
+// func handleMessages(conn *websocket.Conn, h *mainhub.MainHub) {
+// 	// h.Register <- conn
 
-	defer func() {
-		h.Unregister <- conn
-		log.Println("Connection closed and unregistered")
-	}() // Гарантированное закрытие соединения
+// 	defer func() {
+// 		// h.Unregister <- conn
+// 		log.Println("Connection closed and unregistered")
+// 	}() // Гарантированное закрытие соединения
 
-	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Read error:", err)
-			break
-		}
-		log.Printf("Received from client: %s\n", message)
-		// Эхо обратно
+// 	for {
+// 		_, message, err := conn.ReadMessage()
+// 		if err != nil {
+// 			log.Println("Read error:", err)
+// 			break
+// 		}
+// 		log.Printf("Received from client: %s\n", message)
+// 		// Эхо обратно
 
-		var cmd hub.PlayerCommand // Предполагаем, что PlayerCommand определен в hub
-		err = json.Unmarshal(message, &cmd)
+// 		// var cmd hub.PlayerCommand // Предполагаем, что PlayerCommand определен в hub
+// 		// err = json.Unmarshal(message, &cmd)
 
-		if err == nil {
-			// УСПЕШНАЯ ДЕСЕРИАЛИЗАЦИЯ: Это валидная команда.
-			// log.Printf("Received command type: %s\n", cmd.CommandType)
-			// log.Printf("Received input command: %+v", cmd)
-			h.InputGate <- cmd
-			continue // Переходим к следующей итерации цикла
-		}
+// 		if err == nil {
+// 			// УСПЕШНАЯ ДЕСЕРИАЛИЗАЦИЯ: Это валидная команда.
+// 			// log.Printf("Received command type: %s\n", cmd.CommandType)
+// 			// log.Printf("Received input command: %+v", cmd)
+// 			// h.InputGate <- cmd
+// 			continue // Переходим к следующей итерации цикла
+// 		}
 
-		// Отправляем структурированный объект команды (hub.PlayerCommand)
-		// в InputGate, который слушает GameManager.
-		// conn.WriteMessage(messageType, []byte("Server echoes: "+string(message)))
-	}
-}
+// 		// Отправляем структурированный объект команды (hub.PlayerCommand)
+// 		// в InputGate, который слушает GameManager.
+// 		// conn.WriteMessage(messageType, []byte("Server echoes: "+string(message)))
+// 	}
+// }
 
 func spaHandler(buildPath string) http.HandlerFunc {
 	// Создаем FileServer для обслуживания статических файлов
@@ -100,8 +101,8 @@ func main() {
 	const reactDevServerURL = "http://localhost:5173"
 	const reactBuildPath = "frontend/dist"
 
-	h := hub.NewHub()
-	go h.Run()
+	h := mainhub.NewMainHub()
+	// go h.Run()
 
 	if isDevMode {
 		fmt.Println("🚀 Включен режим разработки. Фронтенд проксируется на", reactDevServerURL)
@@ -131,8 +132,8 @@ func main() {
 		http.HandleFunc("/", spaHandler(reactBuildPath))
 	}
 
-	gm := game.NewGameManager(h, cfg)
-	go gm.Run()
+	// gm := game.NewGameManager(h, cfg)
+	// go gm.Run()
 
 	fmt.Println("Сервер запущен на " + cfg.Server.Host + cfg.Server.Port)
 

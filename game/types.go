@@ -2,7 +2,7 @@ package game
 
 import (
 	"github.com/AndrewOPP/ZumaGameCoop/config"
-	"github.com/AndrewOPP/ZumaGameCoop/hub"
+	// "github.com/AndrewOPP/ZumaGameCoop/room"
 )
 
 type Ball struct {
@@ -21,8 +21,28 @@ type GameState struct {
 
 type GameManager struct {
 	State GameState
-	Hub   *hub.Hub
+	// Hub   *hub.Hub
 	Cfg   *config.Config
 }
 
-// MANAGER.GO
+
+// Player.GO
+
+
+
+// Room.GO
+
+
+
+// CreateRoomRequest - данные, которые клиент отправляет, чтобы создать комнату
+type CreateRoomRequest struct {
+	// Например, имя комнаты, которое выбрал пользователь
+	RoomName string `json:"room_name"` 
+	
+	// ID или Никнейм игрока, который создал комнату и становится Хостом
+	HostID string `json:"host_id"` 
+	
+	// Опционально: максимальное количество игроков
+	MaxPlayers int `json:"max_players"` 
+}
+
