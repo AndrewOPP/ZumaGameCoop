@@ -45,7 +45,7 @@ func LoadConfig() *Config {
 		Game: GameConfig{
 			TickRate:   time.Second / 30,
 			MaxPlayers: 2,
-			BallColor:  "Yellow",
+			BallColor:  "Black",
 		},
 
 		// Physics: PhysicsConfig{

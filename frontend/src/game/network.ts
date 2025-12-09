@@ -1,5 +1,14 @@
 export class NetworkManager {
-    constructor(onStateReceived,) {
+    // Явно объявляем свойства класса с типом any
+    private ws: any;
+    private onStateReceived: any;
+    private playerID: string;
+
+    /**
+     * @param {any} onStateReceived - Коллбэк для передачи данных в Renderer (тип any)
+     */
+    constructor(onStateReceived: any) {
+        // Проставляем типы в конструкторе
         this.ws = new WebSocket("ws://localhost:8080/ws");
         this.onStateReceived = onStateReceived; // Коллбэк для передачи данных в Renderer
 
@@ -9,10 +18,10 @@ export class NetworkManager {
             // this.ws.send("Hello GO! Connection test");
         };
 
-        this.ws.onmessage = (event) => {
+        this.ws.onmessage = (event: any) => {
             try {
-    
-                const gameState = JSON.parse(event.data);
+                // event.data неявно имеет тип any, если WebSocket не типизирован
+                const gameState: any = JSON.parse(event.data);
                 // Передаем данные в внешний обработчик (Renderer)
                 this.onStateReceived(gameState); 
             } catch (e) {
@@ -20,17 +29,17 @@ export class NetworkManager {
             }
         };
 
-        this.ws.onerror = (error) => console.error("WebSocket error:", error);
+        this.ws.onerror = (error: any) => console.error("WebSocket error:", error);
         this.ws.onclose = () => console.log("Connection closed");
     }
 
     /**
      * Формирует и отправляет стандартизированную команду на сервер.
-     * @param {string} commandType - Тип команды (например, 'move', 'shoot').
-     * @param {Object} commandData - Данные, специфичные для команды (например, {x: 10, y: 5}).
-     * @param {Object} payloadData - Данные, специфичные для команды (например, {x: 10, y: 5}).
+     * @param {any} commandType - Тип команды (например, 'move', 'shoot').
+     * @param {any} commandData - Данные, специфичные для команды (например, {x: 10, y: 5}).
+     * @param {any} payloadData - Данные, специфичные для команды (например, {x: 10, y: 5}).
      */
-    sendCommand(commandType, commandData = {}, payloadData = {}) {
+    sendCommand(commandType: any, commandData: any = {}, payloadData: any = {}): void {
         if (this.ws.readyState !== WebSocket.OPEN) {
             console.warn(`WebSocket is not open. Command '${commandType}' ignored.`);
             return;
@@ -50,10 +59,12 @@ export class NetworkManager {
         console.log(`Command sent: ${commandType}`, commandPayload);
     }
 
-    send(message) {
+    /**
+     * @param {any} message - Сообщение для отправки.
+     */
+    send(message: any): void {
         if (this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(message);
         }
     }
 }
-
