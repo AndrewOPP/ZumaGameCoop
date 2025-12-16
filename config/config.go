@@ -29,8 +29,24 @@ type GameConfig struct {
 type Config struct {
 	Server ServerConfig
 	Game   GameConfig
+	WebSocket WebSocketConfig
 	// Physics PhysicsConfig
 }
+
+type WebSocketConfig struct {
+	// Время ожидания Pong после отправки Ping (должно быть больше PingPeriod)
+	PongWait time.Duration 
+
+	// Период отправки Ping-сообщений клиенту (должен быть немного меньше PongWait)
+	PingPeriod time.Duration 
+
+	// Максимальный таймаут для операции записи (например, для WriteMessage или Ping)
+	WriteWait time.Duration 
+
+	// Максимальный размер входящего сообщения в байтах
+	MaxMessageSize int64
+}
+
 
 func LoadConfig() *Config {
 	// 1. Инициализация значениями по умолчанию
@@ -46,6 +62,13 @@ func LoadConfig() *Config {
 			TickRate:   time.Second / 30,
 			MaxPlayers: 2,
 			BallColor:  "Black",
+		},
+
+		WebSocket: WebSocketConfig{
+			MaxMessageSize: 512,            // 512 байт для команд JSON
+            WriteWait:      10 * time.Second, // 10 секунд для таймаута записи
+            PongWait:       60 * time.Second, // 60 секунд на ожидание Pong
+            PingPeriod:     (60 * time.Second * 9) / 10, // 54 секунды
 		},
 
 		// Physics: PhysicsConfig{

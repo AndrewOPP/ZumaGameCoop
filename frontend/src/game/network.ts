@@ -1,70 +1,126 @@
+const SERVER_ADDRESS = 'ws://localhost:8080/ws';
+
+// Интерфейс для структурирования данных, которые мы ожидаем от сервера
+export interface RoomInfo {
+  type: 'room_created' | 'room_joined' | 'room_reconnected' | 'error' | 'STATUS' | 'room_updated';
+  roomID: string;
+  role: string;
+  players: Array<{
+    id: string;
+    playerID: string;
+    role: string;
+    nickname: string;
+  }>;
+  roomName: string;
+  error?: string;
+  currentPlayerID: string;
+}
+
+// Интерфейс команды, которую мы отправляем на сервер (соответствует Go PlayerRawCommand)
+export interface Command {
+  type: string;
+  data: any; // Данные, специфичные для команды (например, { angle: 45 })
+}
+
 export class NetworkManager {
-    // Явно объявляем свойства класса с типом any
-    private ws: any;
-    private onStateReceived: any;
-    private playerID: string;
+  private ws: WebSocket | null = null;
 
-    /**
-     * @param {any} onStateReceived - Коллбэк для передачи данных в Renderer (тип any)
-     */
-    constructor(onStateReceived: any) {
-        // Проставляем типы в конструкторе
-        this.ws = new WebSocket("ws://localhost:8080/ws");
-        this.onStateReceived = onStateReceived; // Коллбэк для передачи данных в Renderer
+  // Коллбэк теперь типизирован, чтобы принимать структурированные данные о комнате/игре
+  private onMessageReceived: (data: any) => void;
 
-        this.playerID = "CLIENT_A_123";
-        this.ws.onopen = () => {
-            console.log("WebSocket connection done");
-            // this.ws.send("Hello GO! Connection test");
-        };
+  // Новые поля для хранения информации после успешного подключения
+  public playerID: string = '';
+  public roomId: string = '';
 
-        this.ws.onmessage = (event: any) => {
-            try {
-                // event.data неявно имеет тип any, если WebSocket не типизирован
-                const gameState: any = JSON.parse(event.data);
-                // Передаем данные в внешний обработчик (Renderer)
-                this.onStateReceived(gameState); 
-            } catch (e) {
-                console.error("Failed to parse game state:", e);
-            }
-        };
+  constructor(onMessageReceied: (data: any) => void) {
+    this.onMessageReceived = onMessageReceied;
+  }
 
-        this.ws.onerror = (error: any) => console.error("WebSocket error:", error);
-        this.ws.onclose = () => console.log("Connection closed");
+  /**
+   * Устанавливает соединение с сервером для создания или присоединения к комнате.
+   * @param {string} action - 'create' или 'join'.
+   * @param {string} playerID - Имя игрока.
+   * @param {string | null} [roomId=null] - ID комнаты, если action === 'join'.
+   */
+  public connect(
+    action: 'create' | 'join' | 'reconnect',
+    playerID: string | null,
+    roomId: string | null = null,
+    nickname: string,
+    roomName?: string,
+  ): void {
+    if (this.ws) {
+      console.warn('Connection already established.');
+      return;
     }
 
-    /**
-     * Формирует и отправляет стандартизированную команду на сервер.
-     * @param {any} commandType - Тип команды (например, 'move', 'shoot').
-     * @param {any} commandData - Данные, специфичные для команды (например, {x: 10, y: 5}).
-     * @param {any} payloadData - Данные, специфичные для команды (например, {x: 10, y: 5}).
-     */
-    sendCommand(commandType: any, commandData: any = {}, payloadData: any = {}): void {
-        if (this.ws.readyState !== WebSocket.OPEN) {
-            console.warn(`WebSocket is not open. Command '${commandType}' ignored.`);
-            return;
+    const url = new URL(SERVER_ADDRESS);
+    url.searchParams.append('action', action);
+    url.searchParams.append('nickname', nickname);
+
+    if (playerID) url.searchParams.append('playerID', playerID);
+    if (roomId) url.searchParams.append('roomId', roomId);
+    if (roomName) url.searchParams.append('roomName', roomName);
+
+    const ws = new WebSocket(url.toString());
+    this.ws = ws;
+
+    ws.onopen = () => {
+      console.log('✅ WebSocket connected for action: ${action}');
+      this.onMessageReceived({
+        type: 'STATUS',
+        message: 'Connected to server.',
+      });
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data: RoomInfo = JSON.parse(event.data);
+
+        if (data.type === 'room_created' || data.type === 'room_joined') {
+          // Сервер вернул информацию о комнате. Сохраняем ID.
+          this.roomId = data.roomID;
+          // Сервер должен вернуть ID игрока в списке players.
+          const self = data.players.find((p) => p.playerID === playerID);
+          if (self) this.playerID = self.id;
         }
+        this.onMessageReceived(data); // Передаем данные в React-компонент
+      } catch (error) {
+        console.error('Failed to parse message from server:', error);
+      }
+    };
 
-        const commandPayload = {
-            player_id: this.playerID, // Используем установленный ID
-            type: commandType,
-            data: commandData,
-            payload: payloadData,
-        };
+    ws.onerror = (error) => {
+      console.error('⚠️ WebSocket error:', error);
+      this.onMessageReceived({ type: 'STATUS', message: 'Connection Error.' });
+    };
 
-        const jsonCommand = JSON.stringify(commandPayload);
-        
-        // Используем метод send() WebSocket API
-        this.ws.send(jsonCommand);
-        console.log(`Command sent: ${commandType}`, commandPayload);
+    ws.onclose = () => {
+      console.log('Connection closed.');
+      this.onMessageReceived({ type: 'STATUS', message: 'Disconnected.' });
+      this.ws = null;
+    };
+  }
+
+  /**
+   * Формирует и отправляет стандартизированную команду на сервер.
+   * @param {string} type - Тип команды (например, 'move_cannon', 'fire').
+   * @param {any} data - Данные, специфичные для команды (соответствует Go rawCmd.Data).
+   */
+  public sendCommand(type: string, data: any = {}): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.warn(`WebSocket is not open. Command '${type}' ignored.`);
+      return;
     }
 
-    /**
-     * @param {any} message - Сообщение для отправки.
-     */
-    send(message: any): void {
-        if (this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(message);
-        }
-    }
+    // 3. Упрощенный Payload, соответствующий Go PlayerRawCommand
+    const commandPayload: Command = {
+      type: type,
+      data: data, // Объект или Map, который будет сериализован в JSON
+    };
+
+    const jsonCommand = JSON.stringify(commandPayload);
+    this.ws.send(jsonCommand);
+    console.log(`Command sent: ${type}`, commandPayload);
+  }
 }

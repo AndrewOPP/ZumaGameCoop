@@ -5,6 +5,7 @@ import (
 	"sync"
 	"log"
 	"github.com/AndrewOPP/ZumaGameCoop/room"
+	"github.com/AndrewOPP/ZumaGameCoop/config"
 )
 
 type MainHub struct {
@@ -28,6 +29,10 @@ type MainHub struct {
 	// 5. Каналы Жизненного Цикла Комнат
 	// Канал, куда комнаты будут отправлять сами себя, когда игра окончена (для очистки).
 	UnregisterRoom chan *room.Room
+
+	Config *config.Config
+
+	RoomsMutex sync.RWMutex
 } 
 
 

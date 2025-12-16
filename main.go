@@ -4,7 +4,6 @@ import (
 	// "encoding/json"
 	"fmt"
 	"github.com/AndrewOPP/ZumaGameCoop/config"
-	// "github.com/AndrewOPP/ZumaGameCoop/game"
 	"github.com/AndrewOPP/ZumaGameCoop/mainHub"
 	"github.com/gorilla/websocket"
 	"log"
@@ -101,7 +100,7 @@ func main() {
 	const reactDevServerURL = "http://localhost:5173"
 	const reactBuildPath = "frontend/dist"
 
-	h := mainhub.NewMainHub()
+	h := mainhub.NewMainHub(cfg)
 	// go h.Run()
 
 	if isDevMode {
@@ -147,6 +146,6 @@ func main() {
 	// 3. Запускаем сервер
 	err := http.ListenAndServe(cfg.Server.Port, nil)
 	if err != nil {
-		panic(err)
+	panic(err)
 	}
 }
