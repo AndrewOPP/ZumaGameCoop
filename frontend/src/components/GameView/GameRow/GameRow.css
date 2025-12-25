@@ -1,0 +1,15 @@
+.gameInput {
+  width: 50px;
+  height: 50px;
+  text-align: center;
+  text-transform: uppercase;
+  border-radius: 6px;
+  font-size: 30px;
+}
+
+.eachRowContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+}

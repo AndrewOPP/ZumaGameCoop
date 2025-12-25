@@ -72,7 +72,14 @@ export default function MainMenu() {
             </>
           )}
           <MusicButton />
-
+          <button
+            onClick={() => {
+              localStorage.removeItem('roomID');
+              localStorage.removeItem('playerID');
+            }}
+          >
+            ОЧиСТИТЬ ЛОКАЛ
+          </button>
           <CreateRoomModal open={openModalCreate} onClose={toggleModalCreate} onCreateRoom={handleCreateRoom} />
           <JoinRoomModal open={openJoinModal} onClose={toggleModalJoin} connectPlayer={handleJoinRoom} />
         </div>

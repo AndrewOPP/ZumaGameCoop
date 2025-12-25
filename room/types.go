@@ -6,49 +6,22 @@ import (
 	"github.com/AndrewOPP/ZumaGameCoop/player"
 )
 
-// type PlayerCommand struct {
-// 	PlayerID    string             `json:"player_id"`
-// 	CommandType string             `json:"type"`
-// 	Data        map[string]float64 `json:"data"`
-// 	// Поле для передачи строковых данных, таких как цвет
-// 	Payload map[string]string `json:"payload"`
-// }
-
-// type Player struct {
-// 	ID string `json:"id"` 
-// 	Nickname string `json:"nickname"` 
-// 	Role string  `json:"role"` 
-// 	RoomId string `json:"roomId"`
-// 	Conn *websocket.Conn 
-// 	Send chan []byte
-// }
-
-
-
-// type Hub struct {
-// 	clients map[*websocket.Conn]bool
-
-// 	Register chan *websocket.Conn
-
-// 	Unregister chan *websocket.Conn
-
-// 	StateUpdates chan []byte
-
-// 	InputGate chan PlayerCommand
-// }
-
-
-
-
 
 type Room struct {
-	ID string `json:"id"` 
-	HostID string `json:"hostId"` 
-	Players map[string] *player.Player `json:"players"` 
-	StateUpdates chan []byte
-	InputGate chan *player.PlayerCommand
-	PlayersMutex sync.RWMutex
-	RoomName string
+	ID             string                      `json:"id"`
+    HostID         string                      `json:"hostId"`
+    RoomName       string                      `json:"roomName"`
+    Players        map[string]*player.Player   `json:"players"`
+    PlayersMutex   sync.RWMutex                // Защищает карту игроков
+    
+    InputGate      chan *player.PlayerCommand  // Канал для входящих команд
+    StateUpdates   chan []byte                 // (Можно оставить для сырых данных)
+    Done           chan struct{}               // Для остановки комнаты
+    Dictionary     map[string]bool
+    WordList      []string
+    
+    State          GameState                   // Состояние игры (очки, время)
+    Mu             sync.Mutex                  // Защищает поле State
 
 }
 
@@ -65,4 +38,22 @@ type PlayerInfo struct {
     PlayerID       string `json:"playerid"`
     Nickname string `json:"nickname"`
     Role     string `json:"role"`
+}
+
+type WordleAttempt struct {
+    Word   string `json:"word"`
+    Result string `json:"result"` // Например, "GYXGG" (Green, Yellow, Gray)
+}
+
+type GameState struct {
+    Scores         map[string]int             `json:"scores"`
+    ReadyStatus    map[string]bool            `json:"readyStatus"`
+    CurrentWords   map[string]string          `json:"currentWords"`
+    PlayerAttempts map[string][]WordleAttempt   `json:"playerAttempts"`
+    TimeRemaining  int                        `json:"timeRemaining"`
+    IsActive       bool                       `json:"isActive"`
+}
+
+type CheckWordPayload struct {
+    Word string `json:"word"`
 }

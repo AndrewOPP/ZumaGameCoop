@@ -1,25 +1,48 @@
 const SERVER_ADDRESS = 'ws://localhost:8080/ws';
 
+export interface WordleAttempt {
+  word: string; // Само слово (если отправляешь его)
+  result: string; // Например, "GYYBX" (цветовая схема)
+  timestamp: number;
+}
+
+export interface GameState {
+  // map[string]string -> Объект, где ключ - ID игрока, значение - слово
+  currentWords: Record<string, string>;
+  // map[string][]WordleAttempt -> Объект со списками попыток
+  playerAttempts: Record<string, WordleAttempt[]>;
+  timeRemaining: number;
+  // map[string]bool -> Объект со статусами готовности
+  // readyStatus: Record<string, boolean>;
+  // map[string]int -> Объект с очками
+  scores: Record<string, number>;
+  isActive: boolean;
+}
+
 // Интерфейс для структурирования данных, которые мы ожидаем от сервера
 export interface RoomInfo {
   type: 'room_created' | 'room_joined' | 'room_reconnected' | 'error' | 'STATUS' | 'room_updated';
   roomID: string;
   role: string;
+  roomName: string;
+  error?: string;
+  currentPlayerID: string;
   players: Array<{
     id: string;
     playerID: string;
     role: string;
     nickname: string;
+    isReady: boolean;
+    score: number;
   }>;
-  roomName: string;
-  error?: string;
-  currentPlayerID: string;
+  gameState: GameState;
 }
 
 // Интерфейс команды, которую мы отправляем на сервер (соответствует Go PlayerRawCommand)
 export interface Command {
+  playerID: string;
   type: string;
-  data: any; // Данные, специфичные для команды (например, { angle: 45 })
+  data?: any; // Данные, специфичные для команды (например, { angle: 45 })
 }
 
 export class NetworkManager {
@@ -76,13 +99,15 @@ export class NetworkManager {
     ws.onmessage = (event) => {
       try {
         const data: RoomInfo = JSON.parse(event.data);
+        // console.log(data, 'datadatadatadatadata');
 
-        if (data.type === 'room_created' || data.type === 'room_joined') {
-          // Сервер вернул информацию о комнате. Сохраняем ID.
+        if (['room_created', 'room_joined', 'room_updated', 'room_reconnected'].includes(data.type)) {
           this.roomId = data.roomID;
-          // Сервер должен вернуть ID игрока в списке players.
-          const self = data.players.find((p) => p.playerID === playerID);
-          if (self) this.playerID = self.id;
+
+          // Используем currentPlayerID, который сервер прислал в корне объекта
+          if (data.currentPlayerID) {
+            this.playerID = data.currentPlayerID;
+          }
         }
         this.onMessageReceived(data); // Передаем данные в React-компонент
       } catch (error) {
@@ -107,7 +132,7 @@ export class NetworkManager {
    * @param {string} type - Тип команды (например, 'move_cannon', 'fire').
    * @param {any} data - Данные, специфичные для команды (соответствует Go rawCmd.Data).
    */
-  public sendCommand(type: string, data: any = {}): void {
+  public sendCommand(playerID: string, type: string, data: any = {}): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.warn(`WebSocket is not open. Command '${type}' ignored.`);
       return;
@@ -116,7 +141,8 @@ export class NetworkManager {
     // 3. Упрощенный Payload, соответствующий Go PlayerRawCommand
     const commandPayload: Command = {
       type: type,
-      data: data, // Объект или Map, который будет сериализован в JSON
+      data: data,
+      playerID: playerID, // Объект или Map, который будет сериализован в JSON
     };
 
     const jsonCommand = JSON.stringify(commandPayload);

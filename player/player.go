@@ -30,7 +30,7 @@ func (player *Player) WritePump(cfg *config.Config) {
 	ticker := time.NewTicker(cfg.WebSocket.PingPeriod)
 
 	defer func() {
-		// player.Conn.Close()
+		// close(player.Done)
 	}()
 
 	for {
@@ -79,10 +79,7 @@ func (player *Player) ReadPump(room RoomContext, cfg *config.Config) {
 
 
 	defer func() {
-		// Уведомляем комнату/хаб об отключении (если есть канал Unregister)
-        // Если в комнате есть канал Unregister chan *Player:
-        // r.Unregister <- p 
-        
+        // r.Unregister <- p    
         // Закрываем соединение WebSocket
 		close(player.Done)
 		// player.Conn.Close()
