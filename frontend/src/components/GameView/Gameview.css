@@ -3,3 +3,10 @@
   flex-direction: column;
   gap: 15px;
 }
+
+.mainGameContainer {
+  width: 800px;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}

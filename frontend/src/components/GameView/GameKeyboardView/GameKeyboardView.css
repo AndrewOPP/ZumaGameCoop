@@ -1,0 +1,62 @@
+.keyboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 500px;
+  margin: 20px auto;
+  user-select: none;
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.keyboard-key {
+  font-family: inherit;
+  font-weight: bold;
+  border: 0;
+  padding: 0;
+  height: 58px;
+  cursor: pointer;
+  background-color: #d3d6da; /* Цвет неиспользованной клавиши */
+  color: #1a1a1b;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1; /* Кнопки делят пространство поровну */
+  transition: background-color 0.1s ease;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.keyboard-key:active {
+  background-color: #bbb;
+}
+
+/* Стили для Enter и Backspace */
+.special-key {
+  flex: 1.5; /* Делаем их в полтора раза шире обычных */
+  font-size: 12px;
+}
+
+/* Цвета для будущей логики (можно будет вешать эти классы) */
+.key-correct {
+  background-color: #6aaa64;
+  color: white;
+}
+
+.key-present {
+  background-color: #c9b458;
+  color: white;
+}
+
+.key-absent {
+  background-color: #787c7e;
+  color: white;
+}

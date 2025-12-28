@@ -52,6 +52,7 @@ type GameState struct {
     PlayerAttempts map[string][]WordleAttempt   `json:"playerAttempts"`
     TimeRemaining  int                        `json:"timeRemaining"`
     IsActive       bool                       `json:"isActive"`
+
 }
 
 type CheckWordPayload struct {

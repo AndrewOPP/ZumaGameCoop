@@ -3,7 +3,7 @@ package room
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
+
 	"strings"
 	"time"
 
@@ -26,11 +26,6 @@ func (room *Room) GetPlayerInfoList() []map[string]interface{} {
         }
 
 		playerList = append(playerList, info)
-		// playerList = append(playerList, map[string]interface{}{
-		// 	"id": player.ID,
-		// 	"role": player.Role,
-		// 	"nickname": player.Nickname,
-		// })
 	}
 
 	return playerList
@@ -107,39 +102,6 @@ func (room *Room) Run() {
 	}
 }
 
-func (room *Room) makeAttempsWordsChars(playerID string) (string, map[string]string) {
-	var attempsWords []string
-	attempsWordsChars := make(map[string]string)	
-
-	for _, attempt := range  room.State.PlayerAttempts[playerID] {
-		attempsWords = append(attempsWords, attempt.Word)
-
-		for index, char := range attempt.Word {
-			attempsWordsChars[string(char)] = string(attempt.Result[index])
-		}
-	}
-
-	allChars := strings.Join(attempsWords, "")
-	return allChars, attempsWordsChars
-}
-
-
-func (room *Room) addScoreToPlayer(playerID string, charResult string, playersWordChar string, allCharsString string, allCharsMap map[string]string) {
-	switch charResult{
-	case  "G": 
-		if !strings.Contains(allCharsString, playersWordChar){
-			room.State.Scores[playerID]	+= 50
-		} else if val, exists := allCharsMap[playersWordChar]; exists && val == "Y" {
-			room.State.Scores[playerID]	+= 25
-		}
-	case "Y":
-		if !strings.Contains(allCharsString, playersWordChar){
-			room.State.Scores[playerID]	+= 10
-		}
-	}
-}
-
-
 func (room *Room) checkPlayersWord(playersWord string, secretWord string, playerID string) string {
 	result := make([]string, 6) 
 	usedInSecret := make([]bool, 6)
@@ -173,7 +135,7 @@ func (room *Room) checkPlayersWord(playersWord string, secretWord string, player
 		}
 	}
 
-return strings.Join(result, "")
+	return strings.Join(result, "")
 }
 
 
@@ -203,13 +165,8 @@ func (room *Room) handleCommand(command *player.PlayerCommand) {
 			room.State.IsActive = true
 			fmt.Println("ВСЕ ИГРОКИ ГОТОВЫ, НАЧИНАЕМ ИГРУ")
 			// Тут можно вызвать функцию старта: инициализировать слова, таймер и т.д.
-			count := len(room.WordList)
+			room.chooseRandomWords(room.Players)
 
-			for _, player := range room.Players {
-				randomIndex := rand.Intn(count)
-				room.State.CurrentWords[player.ID] = room.WordList[randomIndex]
-				fmt.Printf("Загаданное слово для игрока %s: %s\n ",   command.PlayerID,room.WordList[randomIndex])		
-			}
 		
     	} else {
 			room.State.IsActive = false
@@ -219,29 +176,30 @@ func (room *Room) handleCommand(command *player.PlayerCommand) {
 	case "check_word": 	
 		var payload CheckWordPayload
 		err := json.Unmarshal(command.Data, &payload)
+		
 		if err != nil {
 			fmt.Printf("Error with  Unmarshal %s\n", err)
 			// Если пришла абракадабра вместо строки — выходим или логируем
 			return 
 		}
-		fmt.Printf("room.Dictionary[payload.Word] %s\n", room.Dictionary[payload.Word])
+
 		if(room.Dictionary[payload.Word]) {
-
 			fmt.Printf("YES WORD %s Is in the map \n", payload.Word)
-
-			wordAnswer := room.checkPlayersWord(payload.Word, room.State.CurrentWords[playerID], playerID)	
-			newAttempt := WordleAttempt{
-				Word:    payload.Word,
-				Result: wordAnswer, // Та самая строка "YYXXX"
-			}
-			room.State.PlayerAttempts[playerID] = append(room.State.PlayerAttempts[playerID], newAttempt)
+			playerResult := room.addPlayerAttempt(playerID, payload.Word)
+			fmt.Printf("playerResult %s playerResult \n", playerResult)
 			
+			if(playerResult == "GGGGG") {
+				room.newRoundForPlayer(playerID)
+			}
+
 		} else {
-			fmt.Printf("WORD %s Is NOT in the map \n", payload.Word)
+			fmt.Printf("WORD %s Is NOT in the map, %s \n", payload.Word, err)
 		}
 		
 	}
 	room.Mu.Unlock()
 	go room.BroadcastRoomUpdate()
 }
+
+
 

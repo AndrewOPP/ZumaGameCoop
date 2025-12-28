@@ -11,6 +11,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path/filepath"
 )
 
 var upgrader = websocket.Upgrader{
@@ -35,39 +36,6 @@ func wsHandler(h *mainhub.MainHub) http.HandlerFunc {
 	}
 }
 
-// func handleMessages(conn *websocket.Conn, h *mainhub.MainHub) {
-// 	// h.Register <- conn
-
-// 	defer func() {
-// 		// h.Unregister <- conn
-// 		log.Println("Connection closed and unregistered")
-// 	}() // Гарантированное закрытие соединения
-
-// 	for {
-// 		_, message, err := conn.ReadMessage()
-// 		if err != nil {
-// 			log.Println("Read error:", err)
-// 			break
-// 		}
-// 		log.Printf("Received from client: %s\n", message)
-// 		// Эхо обратно
-
-// 		// var cmd hub.PlayerCommand // Предполагаем, что PlayerCommand определен в hub
-// 		// err = json.Unmarshal(message, &cmd)
-
-// 		if err == nil {
-// 			// УСПЕШНАЯ ДЕСЕРИАЛИЗАЦИЯ: Это валидная команда.
-// 			// log.Printf("Received command type: %s\n", cmd.CommandType)
-// 			// log.Printf("Received input command: %+v", cmd)
-// 			// h.InputGate <- cmd
-// 			continue // Переходим к следующей итерации цикла
-// 		}
-
-// 		// Отправляем структурированный объект команды (hub.PlayerCommand)
-// 		// в InputGate, который слушает GameManager.
-// 		// conn.WriteMessage(messageType, []byte("Server echoes: "+string(message)))
-// 	}
-// }
 
 func spaHandler(buildPath string) http.HandlerFunc {
 	// Создаем FileServer для обслуживания статических файлов
@@ -94,58 +62,53 @@ func spaHandler(buildPath string) http.HandlerFunc {
 }
 
 func main() {
-	cfg := config.LoadConfig()
+    cfg := config.LoadConfig()
+    isDevMode := os.Getenv("DEV_MODE") == "true"
+    const reactBuildPath = "frontend/dist"
+    
+    h := mainhub.NewMainHub(cfg)
 
-	isDevMode := os.Getenv("DEV_MODE") == "true"
-	const reactDevServerURL = "http://localhost:5173"
-	const reactBuildPath = "frontend/dist"
+    // 1. WebSocket регистрируем ВСЕГДА и ПЕРВЫМ. 
+    // Это отдельный роут, который не должен пересекаться со статикой.
+    http.HandleFunc("/ws", wsHandler(h))
 
-	h := mainhub.NewMainHub(cfg)
-	// go h.Run()
+    if isDevMode {
+        const reactDevServerURL = "http://localhost:5173"
+        fmt.Println("🚀 Режим разработки: прокси на", reactDevServerURL)
+        
+        proxyURL, _ := url.Parse(reactDevServerURL)
+        proxy := httputil.NewSingleHostReverseProxy(proxyURL)
 
-	if isDevMode {
-		fmt.Println("🚀 Включен режим разработки. Фронтенд проксируется на", reactDevServerURL)
+        // В деве всё, кроме /ws, проксируем
+        http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+            proxy.ServeHTTP(w, r)
+        })
+    } else {
+        fmt.Println("📦 Режим продакшена: раздача из", reactBuildPath)
+        
+        // Используем стандартный обработчик статики для существующих файлов
+        fs := http.FileServer(http.Dir(reactBuildPath))
 
-		// Создаем целевой URL для прокси
-		proxyURL, _ := url.Parse(reactDevServerURL)
+        http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+            // Проверяем, существует ли физический файл (JS, CSS, картинка)
+            // Используем filepath.Join для корректных путей в Windows/Linux
+            path := filepath.Join(reactBuildPath, r.URL.Path)
+            info, err := os.Stat(path)
+            
+            // Если файла нет или это папка — отдаем index.html (SPA Fallback)
+            if os.IsNotExist(err) || info.IsDir() {
+                http.ServeFile(w, r, filepath.Join(reactBuildPath, "index.html"))
+                return
+            }
+            
+            fs.ServeHTTP(w, r)
+        })
+    }
 
-		// Создаем Reverse Proxy
-		proxy := httputil.NewSingleHostReverseProxy(proxyURL)
-
-		// Регистрируем обработчик, который проксирует запросы на Dev Server
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			// Важное исключение: если это не API и не WS, проксируем.
-			// Если у вас есть другие API, добавьте исключения здесь.
-			if r.URL.Path == "/ws" {
-				// Это должно быть обработано выше, но как защита:
-				wsHandler(h).ServeHTTP(w, r)
-				return
-			}
-			// Проксируем все остальные запросы на React Dev Server (localhost:5173)
-			proxy.ServeHTTP(w, r)
-		})
-
-	} else {
-		// Режим продакшена: используем статические файлы и SPA Fallback
-		fmt.Println("📦 Включен режим продакшена. Обслуживание статических файлов.")
-		http.HandleFunc("/", spaHandler(reactBuildPath))
-	}
-
-	// gm := game.NewGameManager(h, cfg)
-	// go gm.Run()
-
-	fmt.Println("Сервер запущен на " + cfg.Server.Host + cfg.Server.Port)
-
-	// 1. Регистрируем обработчик для WebSocket
-	// http.HandleFunc("/ws", wsHandler(h))
-
-	// // 2. Регистрируем обработчик для фронтенда (все остальные запросы)
-	// // Передаем путь к билду в функцию, которая вернет обработчик.
-	// http.HandleFunc("/", spaHandler(reactBuildPath))
-
-	// 3. Запускаем сервер
-	err := http.ListenAndServe(cfg.Server.Port, nil)
-	if err != nil {
-	panic(err)
-	}
+    fmt.Printf("🌍 Сервер: http://localhost%s\n", cfg.Server.Port)
+    
+    // Важно: проверь, чтобы cfg.Server.Port начинался с двоеточия, например ":8080"
+    if err := http.ListenAndServe(cfg.Server.Port, nil); err != nil {
+        log.Fatal("ListenAndServe Error:", err)
+    }
 }

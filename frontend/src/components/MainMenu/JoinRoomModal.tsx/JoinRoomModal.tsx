@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Box, Button, Modal, Typography, TextField } from '@mui/material';
-
 const ModalStyle = {
   position: 'absolute',
   top: '50%',
@@ -55,7 +54,15 @@ export default function JoinRoomModal({ open, onClose, connectPlayer }: JoinRoom
           <Button variant="outlined" onClick={onClose} fullWidth>
             Отмена
           </Button>
-          <Button variant="contained" onClick={() => connectPlayer(roomID)} disabled={!roomID.trim()} fullWidth>
+          <Button
+            variant="contained"
+            onClick={() => {
+              connectPlayer(roomID);
+              onClose();
+            }}
+            disabled={!roomID.trim()}
+            fullWidth
+          >
             Подключиться
           </Button>
         </Box>

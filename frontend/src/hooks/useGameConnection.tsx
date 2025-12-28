@@ -31,7 +31,12 @@ export const useGameConnection = (initialNickname: string): ConnectionResult => 
     } else if (data.type === 'room_updated') {
       setRoomData((prevData) => {
         if (!prevData) return null;
-        return { ...prevData, players: data.players, type: data.type, gameState: data.gameState };
+        return {
+          ...prevData,
+          players: data.players,
+          type: data.type,
+          gameState: data.gameState,
+        };
       });
     } else if (data.type === 'error') {
       console.error('Server Error:', data.error);

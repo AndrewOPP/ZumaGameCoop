@@ -42,7 +42,15 @@ export default function LobbyView({ roomData, networkManager, setCurrentView }: 
               </li>
             ))}
           </ul>
-
+          <button
+            onClick={() => {
+              setCurrentView('MainMenu');
+              localStorage.removeItem('roomID');
+              localStorage.removeItem('playerID');
+            }}
+          >
+            Leave room
+          </button>
           <button
             onClick={() => {
               // В будущем здесь можно будет отправить команду "READY"
@@ -50,15 +58,7 @@ export default function LobbyView({ roomData, networkManager, setCurrentView }: 
               console.log('Sending ready signal...');
             }}
           >
-            Я готов
-          </button>
-          <button
-            onClick={() => {
-              localStorage.removeItem('roomID');
-              localStorage.removeItem('playerID');
-            }}
-          >
-            LEAVE ROOM
+            Ready
           </button>
         </div>
       )}

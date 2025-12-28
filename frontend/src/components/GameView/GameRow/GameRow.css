@@ -1,10 +1,14 @@
-.gameInput {
-  width: 50px;
+.gameCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px; /* или твой размер */
   height: 50px;
-  text-align: center;
+  border: 2px solid;
+  font-size: 2rem;
+  font-weight: bold;
   text-transform: uppercase;
-  border-radius: 6px;
-  font-size: 30px;
+  user-select: none; /* чтобы буквы нельзя было выделить мышкой */
 }
 
 .eachRowContainer {
