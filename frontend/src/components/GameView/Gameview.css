@@ -1,12 +1,202 @@
-.rowsContainer {
+/* Контейнер для ячейки */
+.gameCell {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #d3d6da;
   display: flex;
-  flex-direction: column;
-  gap: 15px;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  user-select: none;
+
+  /* Плавный переход для ввода букв (пока нет флипа) */
+  transition: border-color 0.1s ease-in, background-color 0.1s ease-in;
+
+  /* Важно для 3D эффекта */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+
+  /* Оптимизация производительности */
+  will-change: transform, background-color;
 }
 
-.mainGameContainer {
-  width: 800px;
-  align-items: center;
+/* Эффект "подпрыгивания" при наборе буквы */
+.gameCell:not(.flip):not(:empty) {
+  animation: pop 0.1s ease-in-out;
+  border-color: #878a8c;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.eachRowContainer {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+/* --- АНИМАЦИЯ ТРЯСКИ --- */
+.shake {
+  animation: shake 0.5s linear;
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+/* --- ЛОГИКА АНИМАЦИИ ПЕРЕВОРОТА --- */
+
+@keyframes flip-reveal {
+  0% {
+    transform: rotateX(0);
+  }
+  50% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0);
+  }
+}
+
+/* АНИМАЦИИ ЦВЕТА: Держат прозрачность до 50% (момент поворота ребром) */
+@keyframes reveal-correct {
+  0%,
+  50% {
+    background-color: transparent;
+    border-color: #d3d6da;
+  }
+  51%,
+  100% {
+    background-color: #6aaa64;
+    border-color: #6aaa64;
+    color: white;
+  }
+}
+@keyframes reveal-present {
+  0%,
+  50% {
+    background-color: transparent;
+    border-color: #d3d6da;
+  }
+  51%,
+  100% {
+    background-color: #c9b458;
+    border-color: #c9b458;
+    color: white;
+  }
+}
+@keyframes reveal-absent {
+  0%,
+  50% {
+    background-color: transparent;
+    border-color: #d3d6da;
+  }
+  51%,
+  100% {
+    background-color: #787c7e;
+    border-color: #787c7e;
+    color: white;
+  }
+}
+
+/* --- ПРИМЕНЕНИЕ АНИМАЦИЙ --- */
+
+/* Назначаем обе анимации (движение и цвет) одновременно */
+.flip.correct {
+  animation: flip-reveal 0.6s ease-in forwards, reveal-correct 0.6s ease-in forwards;
+}
+.flip.present {
+  animation: flip-reveal 0.6s ease-in forwards, reveal-present 0.6s ease-in forwards;
+}
+.flip.absent {
+  animation: flip-reveal 0.6s ease-in forwards, reveal-absent 0.6s ease-in forwards;
+}
+
+/* --- ЗАДЕРЖКИ (Шаг 300мс = 0.3с) --- */
+.cell-0 {
+  animation-delay: 0s !important;
+}
+.cell-1 {
+  animation-delay: 0.2s !important;
+}
+.cell-2 {
+  animation-delay: 0.4s !important;
+}
+.cell-3 {
+  animation-delay: 0.6s !important;
+}
+.cell-4 {
+  animation-delay: 0.8s !important;
+}
+
+/* --- ПОБЕДНАЯ АНИМАЦИЯ --- */
+.winner {
+  animation: bounce 0.6s ease;
+}
+
+@keyframes bounce {
+  0%,
+  20% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-20px);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+  60% {
+    transform: translateY(-10px);
+  }
+  80% {
+    transform: translateY(2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.win-cell-0 {
+  animation-delay: 0ms;
+}
+.win-cell-1 {
+  animation-delay: 100ms;
+}
+.win-cell-2 {
+  animation-delay: 200ms;
+}
+.win-cell-3 {
+  animation-delay: 300ms;
+}
+.win-cell-4 {
+  animation-delay: 400ms;
 }

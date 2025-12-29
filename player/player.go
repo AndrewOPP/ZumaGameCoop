@@ -17,8 +17,11 @@ func CreatePlayer(conn *websocket.Conn, r *http.Request) *Player  {
 	return &Player {
 		ID: playerID,
 		Nickname: nickname,
+		Score: 0,
+		IsWaiting: false,
+		IsReady: false,
 		Conn: conn,
-		Send: make(chan []byte, 256),
+		Send: make(chan []byte, 256) , 
 		Role: "", 
         RoomId: "",
 		Done: make(chan struct{}),

@@ -11,6 +11,12 @@ interface LobbyProps {
 type CurrentView = 'MainMenu' | 'Loading' | 'Lobby';
 
 export default function LobbyView({ roomData, networkManager, setCurrentView }: LobbyProps) {
+  const {
+    roomName,
+    roomID,
+    gameState: { players },
+    currentPlayerID,
+  } = roomData;
   console.log(roomData);
   // const [roundTimer, setRoundTimer] = useState<number>(roomData.gameState.timeRemaining);
 
@@ -20,15 +26,15 @@ export default function LobbyView({ roomData, networkManager, setCurrentView }: 
         <GameView networkManager={networkManager} roomData={roomData} />
       ) : (
         <div style={{ padding: '20px', border: '1px solid #ccc' }}>
-          <h2>ROOM: {roomData.roomName}</h2>
-          <h4>Room id: {roomData.roomID}</h4>
+          <h2>ROOM: {roomName}</h2>
+          <h4>Room id: {roomID}</h4>
           <p>
-            Your Role: <strong>{roomData.role}</strong>
+            Your Role: <strong>{players[currentPlayerID].role}</strong>
           </p>
 
           <h3>Participants:</h3>
           <ul>
-            {roomData.players.map((player) => (
+            {Object.values(players).map((player) => (
               <li key={player.id}>
                 <span
                   style={{
@@ -47,6 +53,7 @@ export default function LobbyView({ roomData, networkManager, setCurrentView }: 
               setCurrentView('MainMenu');
               localStorage.removeItem('roomID');
               localStorage.removeItem('playerID');
+              networkManager.sendCommand(roomData.currentPlayerID, 'leave_room');
             }}
           >
             Leave room

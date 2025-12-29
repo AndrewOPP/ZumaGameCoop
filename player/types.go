@@ -31,10 +31,14 @@ type Player struct {
 	Nickname string `json:"nickname"`
 	Role     string `json:"role"`
 	RoomId   string `json:"roomId"`
-	Conn     *websocket.Conn
-	Send     chan []byte
-	Mutex sync.Mutex
-	Done chan struct{}
+    Score int `json:"score"`
+    IsWaiting     bool `json:"isWaiting"`
+    IsReady bool `json:"isReady"`
+	Conn      *websocket.Conn `json:"-"` 
+    Send      chan []byte     `json:"-"`
+    Done      chan struct{}   `json:"-"`
+	Mutex sync.Mutex 			`json:"-"`
+
 }
 
 // type Room struct {

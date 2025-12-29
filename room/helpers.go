@@ -29,18 +29,22 @@ func (room *Room) makeAttempsWordsChars(playerID string, ) (string, map[string]s
 }
 
 func (room *Room) addScoreToPlayer(playerID string, charResult string, playersWordChar string, allCharsString string, allCharsMap map[string]string) {
+	playerScore := room.State.Players[playerID].Score
+
 	switch charResult{
 	case  "G": 
 		if !strings.Contains(allCharsString, playersWordChar){
-			room.State.Scores[playerID]	+= 50
+			playerScore	+= 50
 		} else if val, exists := allCharsMap[playersWordChar]; exists && val == "Y" {
-			room.State.Scores[playerID]	+= 25
+			playerScore	+= 25
 		}
 	case "Y":
 		if !strings.Contains(allCharsString, playersWordChar){
-			room.State.Scores[playerID]	+= 10
+			playerScore	+= 10
 		}
 	}
+
+	room.State.Players[playerID].Score = playerScore
 }
 
 func (room *Room) addPlayerAttempt(playerID string, payloadWord string) string {

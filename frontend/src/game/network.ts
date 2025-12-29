@@ -1,22 +1,37 @@
 const SERVER_ADDRESS = 'ws://localhost:8080/ws';
 
 export interface WordleAttempt {
-  word: string; // Само слово (если отправляешь его)
-  result: string; // Например, "GYYBX" (цветовая схема)
-  timestamp: number;
+  word: string;
+  result: string; // Например, "GGYBG"
+}
+
+export interface Player {
+  id: string;
+  nickname: string;
+  score: number;
+  role: string;
+  isWaiting: boolean; // Тот самый флаг для 2-секундной паузы
+  isReady: boolean;
+  roomId: string;
 }
 
 export interface GameState {
-  // map[string]string -> Объект, где ключ - ID игрока, значение - слово
+  // map[string]string -> Record<string, string>
   currentWords: Record<string, string>;
-  // map[string][]WordleAttempt -> Объект со списками попыток
+
+  // map[string][]WordleAttempt -> Record<string, WordleAttempt[]>
   playerAttempts: Record<string, WordleAttempt[]>;
-  timeRemaining: number;
-  // map[string]bool -> Объект со статусами готовности
-  // readyStatus: Record<string, boolean>;
-  // map[string]int -> Объект с очками
+
+  // map[string]int -> Record<string, number>
   scores: Record<string, number>;
+
+  // map[string]*Player -> Record<string, Player>
+  // Теперь это мапа (ID -> Объект игрока), как мы и договорились на бэкенде
+  players: Record<string, Player>;
+
+  timeRemaining: number;
   isActive: boolean;
+  readyStatus: Record<string, boolean>;
 }
 
 // Интерфейс для структурирования данных, которые мы ожидаем от сервера
@@ -27,14 +42,6 @@ export interface RoomInfo {
   roomName: string;
   error?: string;
   currentPlayerID: string;
-  players: Array<{
-    id: string;
-    playerID: string;
-    role: string;
-    nickname: string;
-    isReady: boolean;
-    score: number;
-  }>;
   gameState: GameState;
 }
 

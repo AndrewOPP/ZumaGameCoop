@@ -17,7 +17,7 @@ type RouteResult struct {
 func (h *MainHub) handleJoin(conn *websocket.Conn, r *http.Request) (*RouteResult, error) {
 	currentPlayer := player.CreatePlayer(conn, r) // conn должна быть доступна
 	roomID := r.URL.Query().Get("roomId")
-
+	
 	currentPlayer.Role = "guest"
 	currentRoom, err := h.JoinRoom(currentPlayer, roomID)
 	fmt.Printf("currentRoom %s \n", currentRoom)
@@ -27,9 +27,10 @@ func (h *MainHub) handleJoin(conn *websocket.Conn, r *http.Request) (*RouteResul
 	}
 
 
-	currentRoom.State.ReadyStatus[currentPlayer.ID] = false
-	currentRoom.State.Scores[currentPlayer.ID] = 0
+	currentRoom.State.Players[currentPlayer.ID].Score = 0
+	currentRoom.State.Players[currentPlayer.ID].IsReady = false
 	currentRoom.State.PlayerAttempts[currentPlayer.ID] = make([]room.WordleAttempt, 0)
+	currentRoom.State.Players[currentPlayer.ID].RoomId = currentRoom.ID
 
 
 	h.Logger.Printf("Игрок %s присоединился к комнате %s.", currentPlayer.ID, roomID)
@@ -43,13 +44,20 @@ func (h *MainHub) handleJoin(conn *websocket.Conn, r *http.Request) (*RouteResul
 func (h *MainHub) handleCreate(conn *websocket.Conn, r *http.Request, roomName string) (*RouteResult, error) {
 	currentPlayer := player.CreatePlayer(conn, r)
 	
+	
 	h.Logger.Printf("Игрок %s просит создать новую комнату.", currentPlayer.ID)
 
 	currentPlayer.Role = "host"
 	currentRoom, err := h.CreateRoom(currentPlayer, roomName)
-	currentRoom.State.ReadyStatus[currentPlayer.ID] = false
-	currentRoom.State.Scores[currentPlayer.ID] = 0
+	currentRoom.State.Players[currentPlayer.ID] = currentPlayer
+
+
+
+
 	currentRoom.State.PlayerAttempts[currentPlayer.ID] = make([]room.WordleAttempt, 0)
+	currentRoom.State.Players[currentPlayer.ID].Score = 0
+	currentRoom.State.Players[currentPlayer.ID].RoomId = currentRoom.ID
+	currentRoom.State.Players[currentPlayer.ID].IsReady = false
 	
 	if(err != nil) {
 		h.Logger.Printf("Ошибка при создании комнаты. %s", err)

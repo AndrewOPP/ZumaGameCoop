@@ -44,11 +44,19 @@ type WordleAttempt struct {
     Word   string `json:"word"`
     Result string `json:"result"` // Например, "GYXGG" (Green, Yellow, Gray)
 }
+type Player struct {
+    ID   string `json:"id"`
+    Score int `json:"score"`
+    Nickname string `json:"nickname"`
+    Role     string `json:"role"`
+    IsWaiting     bool `json:"isWaiting"`
+    IsReady bool `json:"isReady"`
+
+}
 
 type GameState struct {
-    Scores         map[string]int             `json:"scores"`
-    ReadyStatus    map[string]bool            `json:"readyStatus"`
     CurrentWords   map[string]string          `json:"currentWords"`
+    Players        map[string]*player.Player        `json:"players"`
     PlayerAttempts map[string][]WordleAttempt   `json:"playerAttempts"`
     TimeRemaining  int                        `json:"timeRemaining"`
     IsActive       bool                       `json:"isActive"`

@@ -3,33 +3,31 @@ package room
 import (
 	"encoding/json"
 	"fmt"
-
 	"strings"
 	"time"
-
 	"github.com/AndrewOPP/ZumaGameCoop/player"
 )
 
-func (room *Room) GetPlayerInfoList() []map[string]interface{} {
-	room.PlayersMutex.RLock()
-	defer room.PlayersMutex.RUnlock()
+// func (room *Room) GetPlayerInfoList() []map[string]interface{} {
+// 	room.PlayersMutex.RLock()
+// 	defer room.PlayersMutex.RUnlock()
 
-	playerList := make([]map[string]interface{}, 0, len(room.Players))
+// 	playerList := make([]map[string]interface{}, 0, len(room.Players))
 
-	for id, player := range room.Players {
-		info := map[string]interface{}{
-            "id":       player.ID,
-            "nickname": player.Nickname,
-            "role":     player.Role,
-            "isReady":  room.State.ReadyStatus[id], 
-            "score":    room.State.Scores[id],
-        }
+// 	for id, player := range room.Players {
+// 		info := map[string]interface{}{
+//             "id":       player.ID,
+//             "nickname": player.Nickname,
+//             "role":     player.Role,
+//             "isReady":  room.State.ReadyStatus[id], 
+//             "score":    room.State.Scores[id],
+//         }
 
-		playerList = append(playerList, info)
-	}
+// 		playerList = append(playerList, info)
+// 	}
 
-	return playerList
-}
+// 	return playerList
+// }
 
 func (room *Room) BroadcastRoomUpdate() {
 	room.Mu.Lock()
@@ -41,13 +39,12 @@ update := struct {
         RoomID          string                   `json:"roomID"`
         RoomName        string                   `json:"roomName"`
         CurrentPlayerID string                   `json:"currentPlayerID"` // Оставь пустым или заполни, если нужно
-        Players         []map[string]interface{} `json:"players"`
+    
         GameState       GameState                `json:"gameState"` // Здесь будут маленькие буквы благодаря тегам в GameState
     }{
         Type:      "room_updated",
         RoomID:    room.ID,
         RoomName:  room.RoomName,
-        Players:   room.GetPlayerInfoList(),
         GameState: state, // Вся логика (время, статус, попытки) теперь внутри этого объекта
     }
 
@@ -140,65 +137,102 @@ func (room *Room) checkPlayersWord(playersWord string, secretWord string, player
 
 
 func (room *Room) handleCommand(command *player.PlayerCommand) {
-	room.Mu.Lock()
-	playerID, _, commandType := command.PlayerID, command.Data, command.Type 
-	
+    room.Mu.Lock()
+    // Разблокируем мьютекс автоматически при выходе из функции
+    defer room.Mu.Unlock()
 
-	switch commandType {
-	case "toggle_ready": 
-		currentStatus := room.State.ReadyStatus[playerID]
-		room.State.ReadyStatus[playerID] = !currentStatus
-		fmt.Printf("Игрок %s теперь %v", playerID, room.State.ReadyStatus[playerID])
+    playerID := command.PlayerID
+    commandType := command.Type 
 
-		allReady := true 
+    switch commandType {
+    case "toggle_ready": 
+        if player, ok := room.State.Players[playerID]; ok {
+            player.IsReady = !player.IsReady
+            fmt.Printf("Игрок %s теперь готов: %v\n", playerID, player.IsReady)
+        }
 
-		// 2. Проверяем всех. Если нашли хоть одного "не готового" — флаг падает
-		for _, ready := range room.State.ReadyStatus {
-			if !ready {
-				allReady = false
-				break 
-			}
-		}
+        allReady := true 
+        for _, player := range room.State.Players {
+            if !player.IsReady {
+                allReady = false
+                break 
+            }
+        }
+
+        if allReady && !room.State.IsActive {
+            room.State.IsActive = true
+            fmt.Println("ВСЕ ИГРОКИ ГОТОВЫ, НАЧИНАЕМ ИГРУ")
+            room.chooseRandomWords(room.Players)
+        } else if !allReady {
+            // Если кто-то снял готовность, игра не активна (если еще не началась)
+            if !room.State.IsActive {
+                room.State.IsActive = false
+            }
+        }
+        // Отправляем обновление статусов готовности
+        go room.BroadcastRoomUpdate()
+
+
+    case "leave_room":
+        
+        if player, ok := room.State.Players[playerID]; ok {
+        player.Conn.Close() 
+        }
+        delete(room.State.Players, playerID)
+        go room.BroadcastRoomUpdate()
+
+    case "check_word":  
+		// time.Sleep(500 * time.Millisecond)
+        var payload CheckWordPayload
+        if err := json.Unmarshal(command.Data, &payload); err != nil {
+            fmt.Printf("Error with Unmarshal: %s\n", err)
+            return 
+        }
+
+        // Проверяем, не находится ли игрок уже в режиме ожидания
+        if room.State.Players[playerID].IsWaiting {
+            return
+        }
 		
-
-		if allReady && !room.State.IsActive {
-			room.State.IsActive = true
-			fmt.Println("ВСЕ ИГРОКИ ГОТОВЫ, НАЧИНАЕМ ИГРУ")
-			// Тут можно вызвать функцию старта: инициализировать слова, таймер и т.д.
-			room.chooseRandomWords(room.Players)
-
 		
-    	} else {
-			room.State.IsActive = false
-		}
+        if room.Dictionary[payload.Word] {
+            fmt.Printf("Слово %s найдено в словаре\n", payload.Word)
+            playerResult := room.addPlayerAttempt(playerID, payload.Word)
+            
+            if playerResult == "GGGGG" {
+                // 1. Немедленно ставим флаг блокировки
+               
+                
+                // 2. СРАЗУ рассылаем состояние, чтобы фронтенд заблокировал ввод и начал анимацию
+                go room.BroadcastRoomUpdate()
 
-		
-	case "check_word": 	
-		var payload CheckWordPayload
-		err := json.Unmarshal(command.Data, &payload)
-		
-		if err != nil {
-			fmt.Printf("Error with  Unmarshal %s\n", err)
-			// Если пришла абракадабра вместо строки — выходим или логируем
-			return 
-		}
-
-		if(room.Dictionary[payload.Word]) {
-			fmt.Printf("YES WORD %s Is in the map \n", payload.Word)
-			playerResult := room.addPlayerAttempt(playerID, payload.Word)
-			fmt.Printf("playerResult %s playerResult \n", playerResult)
-			
-			if(playerResult == "GGGGG") {
-				room.newRoundForPlayer(playerID)
-			}
-
-		} else {
-			fmt.Printf("WORD %s Is NOT in the map, %s \n", payload.Word, err)
-		}
-		
-	}
-	room.Mu.Unlock()
-	go room.BroadcastRoomUpdate()
+                // 3. Запускаем таймер в отдельной горутине
+                go func(playerID string) {
+                    time.Sleep(3 * time.Second)
+                    
+                    room.Mu.Lock()
+                    // Проверяем, существует ли игрок (мог выйти за 3 секунды)
+                    if player, ok := room.State.Players[playerID]; ok {
+                        player.IsWaiting = false
+                        room.newRoundForPlayer(playerID)
+                    }
+                    room.Mu.Unlock()
+                    
+                    // 4. Финальная рассылка после сброса раунда
+                    room.BroadcastRoomUpdate() 
+                }(playerID)
+                
+                // Выходим из кейса, так как Broadcast уже запущен в горутинеs
+                return 
+            }
+        } else {
+            fmt.Printf("Слова %s нет в словаре\n", payload.Word)
+            // Здесь можно отправить игроку персональную ошибку "Not in word list"
+        }
+        
+        // Рассылаем обновление (например, добавилась новая попытка, не победная)
+        go room.BroadcastRoomUpdate()
+    }
 }
 
 

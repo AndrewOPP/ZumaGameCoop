@@ -32,7 +32,7 @@ func(h *MainHub) CreateRoom(HostConnection *player.Player, roomName string) (*ro
 
 	// 2. Создаем уникальный ID комнаты (например, с помощью библиотеки uuid или просто счетчика)
     // Для простоты используем текущее время и имя хоста для псевдо-уникальности
-	roomID := fmt.Sprintf("room_%s_%d", HostConnection.ID, time.Now().UnixNano())
+	roomID := fmt.Sprintf("room_%d", time.Now().UnixNano())
 
 
 
@@ -59,10 +59,9 @@ func(h *MainHub) CreateRoom(HostConnection *player.Player, roomName string) (*ro
 
 func NewGameState()  room.GameState {
     return  room.GameState{
-        Scores:        make(map[string]int),
-        ReadyStatus:   make(map[string]bool),
         CurrentWords:  make(map[string]string),
 		PlayerAttempts: make(map[string][]room.WordleAttempt),
+		Players: make(map[string]*player.Player),
         TimeRemaining: 600,
         IsActive:      false,
 
@@ -128,24 +127,26 @@ func(h *MainHub) sendRoomInfo(player *player.Player, currentRoom *room.Room, mes
     currentRoom.Mu.Lock()
     defer currentRoom.Mu.Unlock()
 
-	playersList := make([]map[string]interface{}, 0, len(currentRoom.Players))
+	// playersList := make([]map[string]interface{}, 0, len(currentRoom.Players))
 
-	for _, player := range currentRoom.Players {
-		playersList = append(playersList, map[string]interface{}{
-			"id": player.ID,
-			"role": player.Role,
-			"nickname": player.Nickname,
-			"score": currentRoom.State.Scores[player.ID],
-			"isReady": currentRoom.State.ReadyStatus[player.ID],
-		})
-	}
+	// for _, player := range currentRoom.Players {
+	// 	playersList = append(playersList, map[string]interface{}{
+	// 		"id": player.ID,
+	// 		"role": player.Role,
+	// 		"nickname": player.Nickname,
+	// 		"score": currentRoom.State.Players[player.ID].Score,
+	// 		"isReady": currentRoom.State.Players[player.ID].IsReady,
+	// 		"roomID": currentRoom.State.Players[player.ID].RoomId,
+
+	// 	})
+	// }
 
 	response := map[string]interface{}{
 		"type": messageType,
 		"roomID": currentRoom.ID,
 		"roomName": currentRoom.RoomName,
-		"players": playersList,
-		"role": player.Role, // убрать в будущем так как в плеер листе у нас есть роль для каждогл
+		// "players": playersList,
+		// "role": player.Role, // убрать в будущем так как в плеер листе у нас есть роль для каждогл
 		"currentPlayerID": player.ID,
 		"gameState": currentRoom.State, // ПЕРЕДЕЛАТЬ, НЕ ПЕРЕДОВАТЬ ГОТОВНОСТЬ И СЛОВА ЧТОБЫ НЕ ЧИТЕРИЛИ 
 	}
@@ -178,7 +179,8 @@ func (h *MainHub) ReconnectPlayer(newConn *websocket.Conn, roomID string, player
 	}
 
 	room.PlayersMutex.RLock() 
-    oldPlayer, found := room.Players[playerID]
+    // oldPlayer, found := room.Players[playerID]
+    oldPlayer, found := room.State.Players[playerID]
     room.PlayersMutex.RUnlock()
 
 	// НУЖНО НАХОДИТЬ В СТАРОЙ РУМЕ ПО АЙДИ ИГРОКА ЕГО ДАННЫЕ (ОЧКИ, ВРЕМЯ И ТД И ТУТ ПРИСВАИВАТЬ ЧТОБЫ НЕ БЫЛО ОШИБКИ)
@@ -220,6 +222,7 @@ func(h *MainHub) JoinRoom(player *player.Player, roomID string) (*room.Room, err
 	if !found {return nil, fmt.Errorf("комната с ID %s не найдена", roomID)}
 	
 	room.PlayersMutex.Lock() 
+	room.State.Players[player.ID] = player
 	room.Players[player.ID] = player
 	room.PlayersMutex.Unlock()
 
