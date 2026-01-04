@@ -1,8 +1,11 @@
-/* Контейнер для ячейки */
+/* ===============================
+   1. БАЗОВЫЕ СТИЛИ КЛЕТКИ
+   =============================== */
 .gameCell {
   width: 60px;
   height: 60px;
   border: 2px solid #d3d6da;
+  background-color: white;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10,39 +13,36 @@
   font-weight: bold;
   text-transform: uppercase;
   user-select: none;
-
-  /* Убираем все глобальные transition, оставляем только для бордера при вводе */
-  transition: border-color 0.1s ease-out;
-
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform-style: preserve-3d;
+  will-change: transform, background-color, border-color;
+  /* Плавный возврат к белому в конце */
+  transition: background-color 0.5s ease;
 }
 
-/* МГНОВЕННОЕ ПОДПРЫГИВАНИЕ ПРИ ВВОДЕ */
-/* Мы гарантируем отсутствие задержки (animation-delay: 0) */
-.gameCell:not(.flip):not(:empty) {
-  animation: pop 0.1s ease-out forwards;
-  animation-delay: 0s !important;
-  border-color: #878a8c;
+.cell-text {
+  display: block;
+  will-change: transform, opacity;
 }
 
-@keyframes pop {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
+/* Переменные цветов */
+.gameCell.correct {
+  --reveal-color: #6aaa64;
+}
+.gameCell.present {
+  --reveal-color: #c9b458;
+}
+.gameCell.absent {
+  --reveal-color: #787c7e;
+}
+.gameCell:not(.correct):not(.present):not(.absent) {
+  --reveal-color: transparent;
 }
 
-/* --- ПЕРЕВОРОТ (FLIP) --- */
-.flip {
-  /* Анимация переворота запускается только здесь */
-}
+/* ===============================
+   2. АНИМАЦИИ (Keyframes)
+   =============================== */
 
 @keyframes flip-reveal {
   0% {
@@ -69,6 +69,7 @@
     color: white;
   }
 }
+
 @keyframes reveal-present {
   0%,
   50% {
@@ -82,6 +83,7 @@
     color: white;
   }
 }
+
 @keyframes reveal-absent {
   0%,
   50% {
@@ -96,90 +98,133 @@
   }
 }
 
-/* Применяем анимации переворота */
-.flip.correct {
-  animation: flip-reveal 0.6s ease-in forwards, reveal-correct 0.6s ease-in forwards;
-}
-.flip.present {
-  animation: flip-reveal 0.6s ease-in forwards, reveal-present 0.6s ease-in forwards;
-}
-.flip.absent {
-  animation: flip-reveal 0.6s ease-in forwards, reveal-absent 0.6s ease-in forwards;
-}
-
-/* ЗАДЕРЖКИ ТОЛЬКО ДЛЯ КЛАССА FLIP */
-/* Это исключает влияние на ввод букв */
-.cell-0.flip {
-  animation-delay: 0s !important;
-}
-.cell-1.flip {
-  animation-delay: 0.2s !important;
-}
-.cell-2.flip {
-  animation-delay: 0.4s !important;
-}
-.cell-3.flip {
-  animation-delay: 0.6s !important;
-}
-.cell-4.flip {
-  animation-delay: 0.8s !important;
-}
-
-/* --- ТРЯСКА И ПОБЕДА --- */
-.shake {
-  animation: shake 0.5s linear;
-}
-@keyframes shake {
-  10%,
-  90% {
-    transform: translateX(-1px);
-  }
-  20%,
-  80% {
-    transform: translateX(2px);
-  }
-  30%,
-  50%,
-  70% {
-    transform: translateX(-4px);
-  }
-  40%,
-  60% {
-    transform: translateX(4px);
-  }
-}
-
-.winner {
-  animation: bounce 0.6s ease forwards;
-}
-.win-cell-0 {
-  animation-delay: 0s !important;
-}
-.win-cell-1 {
-  animation-delay: 0.1s !important;
-}
-.win-cell-2 {
-  animation-delay: 0.2s !important;
-}
-.win-cell-3 {
-  animation-delay: 0.3s !important;
-}
-.win-cell-4 {
-  animation-delay: 0.4s !important;
-}
-
-@keyframes bounce {
+@keyframes win-fade-out {
   0%,
-  20% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-20px);
-  }
-  50% {
-    transform: translateY(5px);
+  65% {
+    background-color: var(--reveal-color);
+    border-color: var(--reveal-color);
+    color: white;
   }
   100% {
-    transform: translateY(0);
+    background-color: transparent;
+    border-color: #d3d6da;
+    color: transparent;
   }
+}
+
+@keyframes clear-text {
+  0%,
+  65% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes pop-text {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+/* ===============================
+   3. ПРИМЕНЕНИЕ И ЗАДЕРЖКИ
+   =============================== */
+
+/* Обычный ввод буквы */
+.gameCell.filled:not(.flip) .cell-text {
+  animation: pop-text 0.3s ease-out;
+}
+
+/* Стандартный переворот (без очистки) */
+.flip.correct {
+  animation: flip-reveal 0.6s ease forwards, reveal-correct 0.6s ease forwards;
+}
+.flip.present {
+  animation: flip-reveal 0.6s ease forwards, reveal-present 0.6s ease forwards;
+}
+.flip.absent {
+  animation: flip-reveal 0.6s ease forwards, reveal-absent 0.6s ease forwards;
+}
+
+/* ФИНАЛЬНАЯ ОЧИСТКА 
+   Используем раздельные свойства, чтобы НЕ затирать задержки cell-X
+*/
+.gameCell.clear-after-win {
+  animation: reveal-correct 0.6s ease forwards, win-fade-out 3s ease-in-out forwards;
+}
+
+.gameCell.correct.clear-after-win {
+  animation-name: reveal-correct, win-fade-out;
+}
+.gameCell.present.clear-after-win {
+  animation-name: reveal-present, win-fade-out;
+}
+.gameCell.absent.clear-after-win {
+  animation-name: reveal-absent, win-fade-out;
+}
+
+/* Очистка текста */
+.clear-after-win .cell-text {
+  animation: clear-text 3s ease-in-out forwards;
+  /* Задержка текста будет наследоваться или браться из .cell-X ниже */
+}
+
+/* СТРОГИЕ ЗАДЕРЖКИ 
+   Добавляем .gameCell, чтобы специфичность (вес) была выше, чем у .flip.correct
+*/
+.gameCell.cell-0.clear-after-win {
+  animation-delay: 0s;
+}
+.gameCell.cell-1.clear-after-win {
+  animation-delay: 0.2s;
+}
+.gameCell.cell-2.clear-after-win {
+  animation-delay: 0.4s;
+}
+.gameCell.cell-3.clear-after-win {
+  animation-delay: 0.6s;
+}
+.gameCell.cell-4.clear-after-win {
+  animation-delay: 0.8s;
+}
+
+/* Специальная обработка текста внутри ячеек с задержкой */
+.gameCell.cell-0 .cell-text {
+  animation-delay: 0s;
+}
+.gameCell.cell-1 .cell-text {
+  animation-delay: 0.2s;
+}
+.gameCell.cell-2 .cell-text {
+  animation-delay: 0.4s;
+}
+.gameCell.cell-3 .cell-text {
+  animation-delay: 0.6s;
+}
+.gameCell.cell-4 .cell-text {
+  animation-delay: 0.8s;
+}
+
+.gameCell.cell-0.clear-after-win .cell-text {
+  animation-delay: 1s;
+}
+.gameCell.cell-1.clear-after-win .cell-text {
+  animation-delay: 2s;
+}
+.gameCell.cell-2.clear-after-win .cell-text {
+  animation-delay: 3s;
+}
+.gameCell.cell-3.clear-after-win .cell-text {
+  animation-delay: 4s;
+}
+.gameCell.cell-4.clear-after-win .cell-text {
+  animation-delay: 5s;
 }

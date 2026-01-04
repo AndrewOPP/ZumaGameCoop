@@ -2,7 +2,8 @@ const SERVER_ADDRESS = 'ws://localhost:8080/ws';
 
 export interface WordleAttempt {
   word: string;
-  result: string; // Например, "GGYBG"
+  result: string;
+  isCorrect?: boolean;
 }
 
 export interface Player {

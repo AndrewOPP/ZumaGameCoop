@@ -48,10 +48,11 @@ func (room *Room) addScoreToPlayer(playerID string, charResult string, playersWo
 }
 
 func (room *Room) addPlayerAttempt(playerID string, payloadWord string) string {
-		wordAnswer:= room.checkPlayersWord(payloadWord, room.State.CurrentWords[playerID], playerID)	
+		wordAnswer, isCorrect:= room.checkPlayersWord(payloadWord, room.State.CurrentWords[playerID], playerID)	
 		newAttempt := WordleAttempt{
 			Word:    payloadWord,
 			Result: wordAnswer,// Та самая строка "YYXXX"
+			IsCorrect: isCorrect,
 		}
 		// room.State.PlayerAttempts[playerID][] = append(room.State.PlayerAttempts[playerID], newAttempt)
 		room.State.PlayerAttempts[playerID] = append(room.State.PlayerAttempts[playerID], newAttempt)

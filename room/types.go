@@ -43,6 +43,7 @@ type PlayerInfo struct {
 type WordleAttempt struct {
     Word   string `json:"word"`
     Result string `json:"result"` // Например, "GYXGG" (Green, Yellow, Gray)
+    IsCorrect bool `json:"isCorrect"`
 }
 type Player struct {
     ID   string `json:"id"`

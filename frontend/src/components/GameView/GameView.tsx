@@ -4,6 +4,7 @@ import GameKeyboardView from './GameKeyboardView/GameKeyboardView';
 import { NetworkManager, type RoomInfo } from '../../game/network';
 import './Gameview.css';
 import { isValidWord } from '../../utils/dictionary';
+import EnemyBoardWindow from './EnemyBoardWindow/EnemyBoardWindow';
 
 interface GameViewProps {
   networkManager: NetworkManager;
@@ -13,6 +14,7 @@ interface GameViewProps {
 export default function GameView({ networkManager, roomData }: GameViewProps) {
   const [inputValue, setInputValue] = useState('');
   const [isShaking, setIsShaking] = useState(false);
+  const [isNeedToClear, setIsNeedToClear] = useState(false);
 
   // Добавляем rowIndex, чтобы слово не прыгало между строками одного раунда
   const [localAttempt, setLocalAttempt] = useState<{
@@ -43,6 +45,7 @@ export default function GameView({ networkManager, roomData }: GameViewProps) {
     setIsShaking(true);
     setTimeout(() => setIsShaking(false), 700);
   };
+  console.log(playerAttempts);
 
   const HandleOnSubmit = useCallback(
     (word: string) => {
@@ -58,6 +61,7 @@ export default function GameView({ networkManager, roomData }: GameViewProps) {
 
         networkManager.sendCommand(currentPlayerID, 'check_word', { word: formatted });
         setInputValue('');
+        setIsNeedToClear(false);
       }
     },
     [networkManager, currentPlayerID, currentScore, nextIndex],
@@ -97,9 +101,21 @@ export default function GameView({ networkManager, roomData }: GameViewProps) {
     return Array.from({ length: 6 }).map((_, index) => {
       const serverAttempt = playerAttempts[index];
       const isCurrentRow = index === nextIndex;
+      // const clearClass = serverAttempt?.isCorrect ? 'clear-after-win' : '';
+
+      if ((serverAttempt?.isCorrect || playerAttempts.length === 6) && !isNeedToClear) {
+        setIsNeedToClear(true);
+      }
 
       if (serverAttempt) {
-        return <GameRow key={`done-${index}`} attempt={serverAttempt} value={serverAttempt.word} />;
+        return (
+          <GameRow
+            key={`done-${index}`}
+            attempt={serverAttempt}
+            value={serverAttempt.word}
+            isNeedToClear={isNeedToClear}
+          />
+        );
       }
 
       // Если это текущая строка: приоритет у "зависшего" слова, потом ввод.
@@ -116,12 +132,21 @@ export default function GameView({ networkManager, roomData }: GameViewProps) {
 
   return (
     <div className="mainGameContainer">
-      <div className="gameHeader">
+      <div>
         <p>Конец игры через: {gameState.timeRemaining}</p>
         <p>Score: {currentScore}</p>
+        <p>ОТВЕТ {gameState.currentWords[currentPlayerID]}</p>
       </div>
-      <div className="rowsContainer">{renderRows()}</div>
-      <GameKeyboardView roomData={roomData} networkManager={networkManager} onKeyPress={handleInput} />
+
+      <div className="gameHeader">
+        <div className="rowsContainer">{renderRows()}</div>
+        <GameKeyboardView roomData={roomData} networkManager={networkManager} onKeyPress={handleInput} />
+      </div>
+
+      <div className="enemyBoardWindow">
+        <h4>Enemy data</h4>
+        <EnemyBoardWindow roomData={roomData} />
+      </div>
     </div>
   );
 }

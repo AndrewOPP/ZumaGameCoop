@@ -99,10 +99,11 @@ func (room *Room) Run() {
 	}
 }
 
-func (room *Room) checkPlayersWord(playersWord string, secretWord string, playerID string) string {
+func (room *Room) checkPlayersWord(playersWord string, secretWord string, playerID string) (string, bool) {
 	result := make([]string, 6) 
 	usedInSecret := make([]bool, 6)
 	allCharsString, allCharsMap := room.makeAttempsWordsChars(playerID)
+    isCorrect := true
 
 	for i := 0; i < 5; i++ {
 		if playersWord[i] == secretWord[i] {
@@ -116,7 +117,7 @@ func (room *Room) checkPlayersWord(playersWord string, secretWord string, player
 		if result[i] == "G" {
         	continue
     	}	
-
+        isCorrect = false       
 		result[i] = "X"
 
 		for j := 0; j < 5; j++ {
@@ -132,7 +133,9 @@ func (room *Room) checkPlayersWord(playersWord string, secretWord string, player
 		}
 	}
 
-	return strings.Join(result, "")
+  
+
+	return strings.Join(result, ""), isCorrect
 }
 
 
@@ -199,7 +202,7 @@ func (room *Room) handleCommand(command *player.PlayerCommand) {
             fmt.Printf("Слово %s найдено в словаре\n", payload.Word)
             playerResult := room.addPlayerAttempt(playerID, payload.Word)
             
-            if playerResult == "GGGGG" {
+            if playerResult == "GGGGG" || len(room.State.PlayerAttempts[playerID]) >= 6 {
                 // 1. Немедленно ставим флаг блокировки
                
                 
@@ -208,7 +211,7 @@ func (room *Room) handleCommand(command *player.PlayerCommand) {
 
                 // 3. Запускаем таймер в отдельной горутине
                 go func(playerID string) {
-                    time.Sleep(3 * time.Second)
+                    time.Sleep(4500*time.Millisecond)
                     
                     room.Mu.Lock()
                     // Проверяем, существует ли игрок (мог выйти за 3 секунды)
@@ -225,6 +228,7 @@ func (room *Room) handleCommand(command *player.PlayerCommand) {
                 // Выходим из кейса, так как Broadcast уже запущен в горутинеs
                 return 
             }
+
         } else {
             fmt.Printf("Слова %s нет в словаре\n", payload.Word)
             // Здесь можно отправить игроку персональную ошибку "Not in word list"
